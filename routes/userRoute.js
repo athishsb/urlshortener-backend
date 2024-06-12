@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:5173";
+const BASE_URL = "https://urlshortener-application.netlify.app";
 import express from "express";
 import bcrypt from "bcrypt";
 import {
