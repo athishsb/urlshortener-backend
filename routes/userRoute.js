@@ -14,17 +14,11 @@ import {
   resetPassword,
 } from "../controllers/userController.js";
 import jwt from "jsonwebtoken";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 const router = express.Router();
-
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: process.env.EMAIL_USERNAME,
-    pass: process.env.EMAIL_PASSWORD,
-  },
-});
 
 //1
 // add new user - with email, username, password
@@ -53,7 +47,7 @@ router.post("/signup", async (req, res) => {
 
       const link = `${BASE_URL}/activate/${hashedUser._id}?activateToken=${token}`;
       const mailOptions = {
-        from: process.env.EMAIL_USERNAME,
+        from: "onboarding@resend.dev",
         to: hashedUser.email,
         subject: "Account Activation Link sent",
         text: `Click on the below link to activate your account. This link is valid for 48 hours after which link will be invalid. ${link}`,
@@ -64,24 +58,15 @@ router.post("/signup", async (req, res) => {
         return res
           .status(404)
           .json({ message: "Error uploading user information" });
-      } else {
-        transporter.sendMail(mailOptions, function (error, info) {
-          if (error) {
-            //console.log("Email not sent", error);
-            return res.status(400).send({
-              message: "Error sending email",
-              result: result.acknowledged,
-            });
-          } else {
-            //console.log("Email sent: " + info.response);
-            return res.status(200).send({
-              result: result.acknowledged,
-              message: "Activation link sent",
-              data: hashedUser.email,
-            });
-          }
-        });
       }
+
+      await resend.emails.send(mailOptions);
+
+      return res.status(200).send({
+        result: result.acknowledged,
+        message: "Activation link sent",
+        data: hashedUser.email,
+      });
     } else {
       return res.status(400).json({ message: "Email already exist" });
     }
@@ -176,7 +161,7 @@ router.post("/activation", async (req, res) => {
 
       const link = `${BASE_URL}/activate/${user._id}?activateToken=${token}`;
       const mailOptions = {
-        from: process.env.EMAIL_USERNAME,
+        from: "onboarding@resend.dev",
         to: user.email,
         subject: "Account Activation Link sent",
         text: `Click on the below link to activate your account. This link is valid for 48 hours after which link will be invalid. ${link}`,
@@ -187,21 +172,13 @@ router.post("/activation", async (req, res) => {
           .status(404)
           .json({ message: "Error sending activation mail" });
       } else {
-        transporter.sendMail(mailOptions, function (error, info) {
-          if (error) {
-            //console.log("Email not sent", error);
-            return res.status(400).send({
-              message: "Error sending email",
-              result: result.modifiedCount,
-            });
-          } else {
-            //console.log("Email sent: " + info.response);
-            return res.status(200).send({
-              result: result.modifiedCount,
-              message: "Activation link sent",
-              data: user.email,
-            });
-          }
+
+        await resend.emails.send(mailOptions);
+
+        return res.status(200).send({
+          result: result.modifiedCount,
+          message: "Activation link sent",
+          data: user.email,
         });
       }
     } else {
@@ -233,7 +210,7 @@ router.post("/forgot-password", async (req, res) => {
 
     const link = `${BASE_URL}/authorize/?id=${user._id}&token=${token}`;
     const mailOptions = {
-      from: process.env.EMAIL_USERNAME,
+      from: "onboarding@resend.dev",
       to: user.email,
       subject: "Password reset link sent",
       text: `Click on the below link to reset your password. This password reset link is valid for 10 minutes after which link will be invalid. ${link}`,
@@ -242,17 +219,11 @@ router.post("/forgot-password", async (req, res) => {
     if (result.modifiedCount === 0) {
       return res.status(400).json({ message: "Error setting verification" });
     } else {
-      transporter.sendMail(mailOptions, function (error, info) {
-        if (error) {
-          //console.log("Email not sent", error);
-          res.status(400).send({
-            message: "Error sending email",
-            reset: result.modifiedCount === 0,
-          });
-        } else {
-          //console.log("Email sent: " + info.response);
-          res.status(200).send({ result: result.modifiedCount !== 0 });
-        }
+
+      await resend.emails.send(mailOptions);
+
+      return res.status(200).send({
+        result: result.modifiedCount !== 0,
       });
     }
   } catch (error) {
