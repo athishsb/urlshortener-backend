@@ -14,9 +14,7 @@ import {
   resetPassword,
 } from "../controllers/userController.js";
 import jwt from "jsonwebtoken";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY);
+import { sendEmail } from "../utils/sendMail.js";
 
 const router = express.Router();
 
@@ -47,7 +45,6 @@ router.post("/signup", async (req, res) => {
 
       const link = `${BASE_URL}/activate/${hashedUser._id}?activateToken=${token}`;
       const mailOptions = {
-        from: "onboarding@resend.dev",
         to: hashedUser.email,
         subject: "Account Activation Link sent",
         text: `Click on the below link to activate your account. This link is valid for 48 hours after which link will be invalid. ${link}`,
@@ -60,7 +57,7 @@ router.post("/signup", async (req, res) => {
           .json({ message: "Error uploading user information" });
       }
 
-      await resend.emails.send(mailOptions);
+      await sendEmail(mailOptions);
 
       return res.status(200).send({
         result: result.acknowledged,
@@ -161,7 +158,6 @@ router.post("/activation", async (req, res) => {
 
       const link = `${BASE_URL}/activate/${user._id}?activateToken=${token}`;
       const mailOptions = {
-        from: "onboarding@resend.dev",
         to: user.email,
         subject: "Account Activation Link sent",
         text: `Click on the below link to activate your account. This link is valid for 48 hours after which link will be invalid. ${link}`,
@@ -173,7 +169,7 @@ router.post("/activation", async (req, res) => {
           .json({ message: "Error sending activation mail" });
       } else {
 
-        await resend.emails.send(mailOptions);
+        await sendEmail(mailOptions);
 
         return res.status(200).send({
           result: result.modifiedCount,
@@ -210,7 +206,6 @@ router.post("/forgot-password", async (req, res) => {
 
     const link = `${BASE_URL}/authorize/?id=${user._id}&token=${token}`;
     const mailOptions = {
-      from: "onboarding@resend.dev",
       to: user.email,
       subject: "Password reset link sent",
       text: `Click on the below link to reset your password. This password reset link is valid for 10 minutes after which link will be invalid. ${link}`,
@@ -220,7 +215,7 @@ router.post("/forgot-password", async (req, res) => {
       return res.status(400).json({ message: "Error setting verification" });
     } else {
 
-      await resend.emails.send(mailOptions);
+      await sendEmail(mailOptions);
 
       return res.status(200).send({
         result: result.modifiedCount !== 0,
